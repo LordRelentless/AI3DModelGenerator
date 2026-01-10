@@ -527,6 +527,142 @@ MIT License - see LICENSE file for details
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+## Troubleshooting
+
+### Installation Issues
+
+**"Module not found" errors**
+```bash
+# Ensure all dependencies are installed
+pip install -r requirements.txt --upgrade
+```
+
+**"No matching distribution found" for open3d**
+- This package is not required for basic usage
+- 3D visualization is handled via WebGL (web) or PyQt6 (desktop)
+- The application doesn't use open3d library
+
+**Python version compatibility**
+- Minimum Python version: 3.8
+- Recommended Python version: 3.9 or 3.10
+- For Python 3.11+: Ensure all packages are updated
+```bash
+# Check Python version
+python --version
+
+# Update pip and packages
+python -m pip install --upgrade pip setuptools wheel
+pip install -r requirements.txt --upgrade
+```
+
+**Virtual environment issues**
+```bash
+# Remove existing venv and recreate
+rm -rf venv
+python -m venv venv
+
+# Windows
+rmdir /s /q venv
+python -m venv venv
+venv\Scripts\activate
+```
+
+### Runtime Issues
+
+**Out of memory errors**
+- Reduce `frame_size` in generation parameters (try 128 instead of 256)
+- Reduce `num_inference_steps` (try 25 instead of 50)
+- Use CPU mode if GPU memory is limited
+- Close other applications to free up memory
+- Check memory usage: `GET /api/device/info`
+
+**Slow generation**
+- Verify GPU is being used: Check `GET /api/device/info`
+- Ensure PyTorch is installed with GPU support
+- NVIDIA: `pip install torch --index-url https://download.pytorch.org/whl/cu118`
+- AMD: Use ROCm-enabled PyTorch from official AMD sources
+- Apple Silicon: MPS is automatically detected
+- Reduce inference steps for faster (but lower quality) results
+
+**Local LLM not working**
+- Check `LOCAL_LLM_ENABLED=True` in `.env`
+- Verify model path: Ensure `LOCAL_LLM_PATH` is correct
+- For GLM 4.7: Use `LOCAL_LLM_PATH=THUDM/glm-4-9b-chat`
+- Check transformers is installed: `pip install transformers`
+- Verify model files exist in specified directory
+- Check logs for error messages
+
+**Networked LLM connection failed**
+- Test connection: Use `POST /api/llm/test-connection`
+- Verify URL format: Should include `http://` or `https://`
+- Check if server is running (e.g., LM Studio: `lm-studio --listen`)
+- Check firewall settings
+- Verify API key if server requires authentication
+- Try different port if using custom server
+
+**Model download failures**
+- Check disk space: Use `GET /api/models/disk-space`
+- Verify internet connection
+- Try manual download: Use `POST /api/models/download-url`
+- Check Hugging Face Hub status: https://huggingface.co/
+- Ensure write permissions to models/ directory
+- Try with `show_progress=true` to see detailed errors
+
+### GPU Detection Issues
+
+**AMD GPU not detected as ROCm**
+- Ensure ROCm is installed from AMD: https://rocm.docs.amd.com/
+- Install ROCm-enabled PyTorch
+- Check device detection: Use `GET /api/device/info`
+- Verify AMD GPU is recognized by ROCm
+
+**Apple Silicon not detected**
+- PyTorch 2.0+ includes MPS support
+- Install latest PyTorch: `pip install torch --upgrade`
+- Restart application after PyTorch upgrade
+
+**CUDA not available on NVIDIA GPU**
+- Update GPU drivers to latest version
+- Install CUDA-enabled PyTorch
+- Check PyTorch version compatibility with CUDA version
+- Reinstall PyTorch: `pip uninstall torch && pip install torch`
+
+### Application Issues
+
+**Desktop GUI not starting**
+- Ensure PyQt6 is installed: `pip install PyQt6`
+- Check if port 5000 is available (API server conflict)
+- Try API mode: `python main.py --mode api`
+- Check logs/ directory for error messages
+
+**Web interface not loading**
+- Verify API server is running
+- Check browser console for CORS errors
+- Clear browser cache
+- Try different browser (Chrome, Firefox, Edge)
+- Disable browser extensions temporarily
+
+**Slicer not working**
+- Ensure mesh file is valid format (PLY, OBJ, STL)
+- Check trimesh is installed: `pip install trimesh`
+- Verify mesh is not corrupted
+- Try with simpler geometry first
+- Check file permissions for output directory
+
+### Getting Help
+
+- Check full README.md for detailed documentation
+- Review API endpoints at `http://localhost:5000/`
+- Ensure all dependencies are properly installed
+- Verify your GPU drivers are up to date
+- Check logs/ directory for detailed error messages
+- Open GitHub issue: https://github.com/LordRelentless/AI3DModelGenerator/issues
+- Include your system information: OS, Python version, GPU details
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
 ## Support
 
 For issues and questions:
