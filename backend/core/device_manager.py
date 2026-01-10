@@ -15,8 +15,11 @@ class DeviceManager:
             self._device = self._detect_device()
     
     @classmethod
-    def detect_device_type(cls) -> Literal['cuda', 'mps', 'cpu']:
+    def detect_device_type(cls) -> Literal['cuda', 'rocm', 'mps', 'cpu']:
         if torch.cuda.is_available():
+            device_name = torch.cuda.get_device_name(0).lower() if torch.cuda.device_count() > 0 else ''
+            if 'amd' in device_name or 'radeon' in device_name:
+                return 'rocm'
             return 'cuda'
         elif torch.backends.mps.is_available():
             return 'mps'
@@ -30,7 +33,12 @@ class DeviceManager:
             if device_count > 0:
                 device = torch.device(f'cuda:0')
                 torch.cuda.set_device(device)
-                print(f"Using CUDA device: {torch.cuda.get_device_name(0)}")
+                device_name = torch.cuda.get_device_name(0).lower()
+                
+                if 'amd' in device_name or 'radeon' in device_name:
+                    print(f"Using ROCm device (AMD GPU): {torch.cuda.get_device_name(0)}")
+                else:
+                    print(f"Using CUDA device: {torch.cuda.get_device_name(0)}")
                 return device
         elif device_type == 'mps':
             print("Using MPS device (Apple Silicon)")

@@ -235,6 +235,84 @@ class LocalLLMProvider(BaseLLMProvider):
                 "inference_steps": 50
             }
 
+class NetworkedLLMProvider(BaseLLMProvider):
+    def __init__(self, server_url: str, api_key: Optional[str] = None):
+        super().__init__(api_key or "")
+        self.server_url = server_url.rstrip('/')
+        try:
+            import openai
+            base_url = self.server_url
+            
+            if not base_url.startswith('http'):
+                base_url = f"http://{base_url}"
+            
+            self.client = openai.AsyncOpenAI(
+                base_url=f"{base_url}/v1",
+                api_key=api_key or "dummy-key"
+            )
+            self.available = True
+            print(f"Networked LLM provider initialized: {server_url}")
+        except ImportError:
+            self.client = None
+            self.available = False
+            print("Failed to initialize OpenAI client for networked LLM")
+    
+    async def generate_text(self, prompt: str, model: str = "local-model", **kwargs) -> str:
+        if not self.available:
+            raise RuntimeError("Networked LLM not available")
+        
+        try:
+            response = await self.client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                **kwargs
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            print(f"Error calling networked LLM: {e}")
+            raise RuntimeError(f"Networked LLM error: {str(e)}")
+    
+    async def generate_3d_prompt(self, user_input: str) -> Dict:
+        system_prompt = """You are a 3D model generation assistant. 
+        Analyze the user's input and create a detailed prompt for 3D model generation.
+        
+        Return your response as JSON with these fields:
+        - "prompt": The main text-to-3D prompt
+        - "negative_prompt": Things to avoid in the 3D model
+        - "style": The artistic style (realistic, stylized, cartoon, etc.)
+        - "quality": Quality settings (high, medium, low)
+        - "guidance_scale": Recommended guidance scale (1-20)
+        - "inference_steps": Recommended number of inference steps (10-100)"""
+        
+        user_prompt = f"""Convert this user request into a 3D model generation prompt:
+        
+        User input: {user_input}
+        
+        Consider:
+        - What object should be created?
+        - What are the key visual details?
+        - What materials should be used?
+        - What size and proportions?
+        - Any specific poses or orientations?"""
+        
+        response = await self.generate_text(
+            prompt=f"{system_prompt}\n\n{user_prompt}",
+            model="local-model",
+            temperature=0.7
+        )
+        
+        try:
+            return json.loads(response)
+        except json.JSONDecodeError:
+            return {
+                "prompt": user_input,
+                "negative_prompt": "",
+                "style": "realistic",
+                "quality": "high",
+                "guidance_scale": 7.5,
+                "inference_steps": 50
+            }
+
 class LLMManager:
     def __init__(self):
         self.providers = {}

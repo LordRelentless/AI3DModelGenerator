@@ -129,11 +129,25 @@ This will start the API server and provide a web interface at `http://localhost:
 - `POST /api/generator/text-to-3d` - Generate 3D model from text
 - `POST /api/generator/image-to-3d` - Generate 3D model from image
 
+### Model Management
+
+- `POST /api/models/download` - Download model from Hugging Face Hub
+- `POST /api/models/download-url` - Download model from direct URL
+- `POST /api/models/auto-download` - Auto-download required models
+- `GET /api/models/disk-space` - Get available disk space
+- `GET /api/models/size?repo_id=<id>` - Get model size
+
+### LLM Configuration
+
+- `POST /api/llm/test-connection` - Test LLM provider connection
+- `GET /api/llm/providers` - List available LLM providers (with priority info)
+- `POST /api/llm/generate-prompt` - Generate enhanced 3D prompts using LLM
+
 ### Slicer
 
 - `POST /api/slicer/create` - Create slicer instance
 - `POST /api/slicer/load` - Load mesh into slicer
-- `POST /api/slicer/slice` - Slice the loaded mesh
+- `POST /api/slicer/slice` - Slice loaded mesh
 - `GET /api/slicer/layer/<slicer_id>/<layer_index>` - Get layer preview
 - `POST /api/slicer/export/gcode` - Export to G-code
 - `POST /api/slicer/export/json` - Export to JSON
@@ -169,6 +183,7 @@ The web-based interface includes:
 The application automatically detects and uses the best available hardware:
 
 - **CUDA**: NVIDIA GPUs with CUDA support
+- **ROCm**: AMD GPUs with ROCm support (including RX 9000 series: RX 9060, RX 9070 XT)
 - **MPS**: Apple Silicon (M1/M2/M3) GPUs
 - **CPU**: Fallback for systems without GPU support
 
@@ -199,6 +214,17 @@ The application automatically prioritizes local LLMs for privacy and reduced lat
 - Cost-effective compared to direct provider APIs
 - Models: `anthropic/claude-3-opus`, `openai/gpt-4`, `google/gemini-pro`, etc.
 
+### Networked Local LLM (Fallback Priority 2)
+- No API required (optional key for authenticated servers)
+- Connect to local LLM servers (LM Studio, Oobabooga, Text-Generation-WebUI, etc.)
+- **Privacy**: All processing on your local network
+- **Configuration**: Set `NETWORKED_LLM_URL` in `.env`
+- **Auto-Detection**: Test connections automatically
+- Example URLs:
+  - `http://localhost:5000` (LM Studio default)
+  - `http://192.168.1.100:5000` (Local network server)
+  - `https://your-server.com` (Remote server)
+
 ### Anthropic (Fallback Priority 2)
 - Requires API key in `.env`
 - Alternative to OpenAI
@@ -212,6 +238,52 @@ The application automatically prioritizes local LLMs for privacy and reduced lat
 - Models: GPT-4, GPT-3.5 Turbo
 
 **Note:** API keys for remote providers are optional. The application works fine with local LLM only, which is the recommended default configuration.
+
+## Model Auto-Downloader
+
+The application includes automatic model downloading for all AI models:
+
+### Features
+- **Hugging Face Integration**: Download models directly from Hugging Face Hub
+- **Direct URL Support**: Download from any model URL
+- **Auto-Download**: Automatically download required models on startup
+- **Progress Tracking**: Real-time download progress with progress bars
+- **Disk Space Check**: Verify available space before downloading
+- **Model Size Info**: Get model sizes before downloading
+- **Organized Storage**: Models organized by type (3d, llm, image)
+
+### Configuration
+```env
+# Auto-Download Settings
+AUTO_DOWNLOAD_MODELS=false  # Automatically download models on startup
+AUTO_DOWNLOAD_3D_MODELS=true  # Download Shap-E, TripoSR
+AUTO_DOWNLOAD_LLM_MODELS=false  # Download LLM models
+```
+
+### API Endpoints
+- `POST /api/models/download` - Download from Hugging Face Hub
+- `POST /api/models/download-url` - Download from direct URL
+- `POST /api/models/auto-download` - Download all required models
+- `GET /api/models/disk-space` - Check available disk space
+- `GET /api/models/size?repo_id=<id>` - Get model size info
+
+### Usage
+```bash
+# Download a specific model
+curl -X POST http://localhost:5000/api/models/download \
+  -H "Content-Type: application/json" \
+  -d '{
+    "repo_id": "openai/shap-e",
+    "model_type": "3d",
+    "show_progress": true
+  }'
+
+# Auto-download all required models
+curl -X POST http://localhost:5000/api/models/auto-download
+
+# Check disk space
+curl http://localhost:5000/api/models/disk-space
+```
 
 ## Examples
 

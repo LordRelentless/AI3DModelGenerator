@@ -23,6 +23,8 @@ class Config:
     LOCAL_LLM_ENABLED = os.getenv('LOCAL_LLM_ENABLED', 'True').lower() == 'true'
     LOCAL_LLM_PATH = os.getenv('LOCAL_LLM_PATH', './models/llm')
     LOCAL_LLM_TYPE = os.getenv('LOCAL_LLM_TYPE', 'transformers')
+    NETWORKED_LLM_URL = os.getenv('NETWORKED_LLM_URL', '')
+    NETWORKED_LLM_API_KEY = os.getenv('NETWORKED_LLM_API_KEY', '')
     
     SHAP_E_MODEL = os.getenv('SHAP_E_MODEL', 'openai/shap-e')
     TRIPOSR_MODEL = os.getenv('TRIPOSR_MODEL', 'stabilityai/triposr')

@@ -7,9 +7,13 @@ import uuid
 
 from config.config import Config
 from backend.core.device_manager import get_device, get_device_info
-from backend.core.llm_manager import LLMManager, OpenAIProvider, AnthropicProvider, LocalLLMProvider, OpenRouterProvider
+from backend.core.llm_manager import (
+    LLMManager, OpenAIProvider, AnthropicProvider, 
+    LocalLLMProvider, OpenRouterProvider, NetworkedLLMProvider
+)
 from backend.models.generator import create_generator
 from backend.utils.slicer import Slicer, SlicerConfig
+from backend.utils.model_downloader import model_downloader
 
 app = Flask(__name__, static_folder='../../frontend/web', static_url_path='/static')
 CORS(app)
@@ -23,9 +27,13 @@ def init_llm_providers():
         llm_manager.add_provider('local', LocalLLMProvider(Config.LOCAL_LLM_PATH, Config.LOCAL_LLM_TYPE), priority=1)
         print("Local LLM provider added (highest priority)")
     
-    if Config.API_KEYS['openai']:
-        llm_manager.add_provider('openai', OpenAIProvider(Config.API_KEYS['openai']), priority=100)
-        print("OpenAI provider added")
+    if Config.NETWORKED_LLM_URL:
+        llm_manager.add_provider(
+            'networked', 
+            NetworkedLLMProvider(Config.NETWORKED_LLM_URL, Config.NETWORKED_LLM_API_KEY),
+            priority=2
+        )
+        print(f"Networked LLM provider added: {Config.NETWORKED_LLM_URL}")
     
     if Config.API_KEYS['anthropic']:
         llm_manager.add_provider('anthropic', AnthropicProvider(Config.API_KEYS['anthropic']), priority=90)
@@ -34,6 +42,10 @@ def init_llm_providers():
     if Config.API_KEYS['openrouter']:
         llm_manager.add_provider('openrouter', OpenRouterProvider(Config.API_KEYS['openrouter']), priority=80)
         print("OpenRouter provider added")
+    
+    if Config.API_KEYS['openai']:
+        llm_manager.add_provider('openai', OpenAIProvider(Config.API_KEYS['openai']), priority=100)
+        print("OpenAI provider added")
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
@@ -335,6 +347,162 @@ def export_slicer_json():
 @app.route('/api/output/<path:filename>', methods=['GET'])
 def serve_output_file(filename):
     return send_from_directory(Config.OUTPUT_DIR, filename)
+
+@app.route('/api/models/download', methods=['POST'])
+def download_model():
+    data = request.json
+    repo_id = data.get('repo_id')
+    model_type = data.get('model_type', '3d')
+    
+    if not repo_id:
+        return jsonify({'error': 'repo_id is required'}), 400
+    
+    try:
+        from backend.utils.model_downloader import create_progress_callback
+        
+        progress_callback = None
+        if data.get('show_progress', False):
+            progress_callback = create_progress_callback(f"Downloading {repo_id}")
+        
+        path = model_downloader.download_model(
+            repo_id=repo_id,
+            model_type=model_type,
+            progress_callback=progress_callback
+        )
+        
+        return jsonify({
+            'success': True,
+            'model_path': str(path),
+            'repo_id': repo_id,
+            'model_type': model_type
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/models/download-url', methods=['POST'])
+def download_model_url():
+    data = request.json
+    url = data.get('url')
+    output_name = data.get('output_name')
+    
+    if not url or not output_name:
+        return jsonify({'error': 'url and output_name are required'}), 400
+    
+    try:
+        from backend.utils.model_downloader import create_progress_callback
+        
+        progress_callback = None
+        if data.get('show_progress', False):
+            progress_callback = create_progress_callback(f"Downloading {output_name}")
+        
+        path = model_downloader.download_model_url(
+            url=url,
+            output_name=output_name,
+            progress_callback=progress_callback
+        )
+        
+        return jsonify({
+            'success': True,
+            'model_path': str(path),
+            'url': url
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/models/auto-download', methods=['POST'])
+def auto_download_models():
+    data = request.json
+    force = data.get('force', False)
+    
+    try:
+        paths = model_downloader.auto_download_required_models(force=force)
+        
+        return jsonify({
+            'success': True,
+            'downloaded_models': [str(p) for p in paths],
+            'count': len(paths)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/models/disk-space', methods=['GET'])
+def get_disk_space():
+    try:
+        free_space = model_downloader.get_available_disk_space()
+        return jsonify({
+            'free_space_bytes': free_space,
+            'free_space_gb': free_space / (1024**3)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/models/size', methods=['GET'])
+def get_model_size():
+    repo_id = request.args.get('repo_id')
+    
+    if not repo_id:
+        return jsonify({'error': 'repo_id parameter is required'}), 400
+    
+    try:
+        size = model_downloader.get_model_size(repo_id)
+        
+        if size is not None:
+            return jsonify({
+                'repo_id': repo_id,
+                'size_bytes': size,
+                'size_gb': size / (1024**3)
+            })
+        else:
+            return jsonify({
+                'repo_id': repo_id,
+                'size_bytes': None,
+                'message': 'Size not available'
+            })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/llm/test-connection', methods=['POST'])
+def test_llm_connection():
+    data = request.json
+    provider = data.get('provider')
+    url = data.get('url')
+    
+    if not provider:
+        return jsonify({'error': 'provider is required'}), 400
+    
+    try:
+        if provider == 'networked' and url:
+            import requests
+            test_url = f"{url}/v1/models" if not url.endswith('/v1') else f"{url}/models"
+            
+            try:
+                response = requests.get(test_url, timeout=5)
+                available = response.status_code == 200
+                
+                return jsonify({
+                    'success': True,
+                    'provider': provider,
+                    'url': url,
+                    'available': available,
+                    'status_code': response.status_code
+                })
+            except Exception as e:
+                return jsonify({
+                    'success': False,
+                    'provider': provider,
+                    'url': url,
+                    'available': False,
+                    'error': str(e)
+                })
+        else:
+            return jsonify({
+                'success': True,
+                'provider': provider,
+                'available': True,
+                'message': 'Provider configuration valid'
+            })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/', methods=['GET'])
 def index():
