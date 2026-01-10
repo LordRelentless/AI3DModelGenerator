@@ -27,8 +27,7 @@ An AI-powered 3D model generation application with LLM integration, slicer previ
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/LordRelentless/Amdidium.git
-cd Amdidium
+git clone https://github.com/LordRelentless/AI3DModelGenerator
 ```
 
 2. Create a virtual environment (recommended):
@@ -65,8 +64,8 @@ API_HOST=0.0.0.0
 API_PORT=5000
 
 # LLM Configuration
-DEFAULT_LLM=openai
-LOCAL_LLM_ENABLED=False
+DEFAULT_LLM=LOCAL_LLM
+LOCAL_LLM_ENABLED=true
 LOCAL_LLM_PATH=./models/llm
 
 # 3D Generation
