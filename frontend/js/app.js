@@ -276,7 +276,12 @@ class App {
             this.updateStatus(result.error, 'error');
         } else {
             document.getElementById('prompt').value = result.prompt || prompt;
-            this.updateStatus('Prompt enhanced successfully', 'success');
+            
+            if (result.provider) {
+                this.updateStatus(`Prompt enhanced successfully using: ${result.provider}`, 'success');
+            } else {
+                this.updateStatus('Prompt enhanced successfully', 'success');
+            }
         }
     }
     
