@@ -23,15 +23,46 @@ An AI-powered 3D model generation application with LLM integration, slicer previ
 - (Optional) Apple Silicon Mac (M1/M2/M3) with MPS support
 - (Optional) AMD GPU with ROCm support
 
-## Installation
+## Quick Start (One-Click)
 
-1. Clone the repository:
+### Windows Users
+
+Double-click `run.bat` to:
+1. Create/activate virtual environment
+2. Install dependencies automatically
+3. Create `.env` file from template
+4. Start the application with interactive menu
+
+### Linux/Mac Users
+
 ```bash
-git clone https://github.com/LordRelentless/AI3DModelGenerator.git
+chmod +x run.sh
+./run.sh
+```
+
+This will:
+1. Create/activate virtual environment
+2. Install dependencies automatically
+3. Create `.env` file from template
+4. Start the application with interactive menu
+
+### One-Click Options
+
+Both scripts offer these modes:
+1. **Desktop GUI** (Recommended) - Full-featured PyQt6 interface
+2. **Web Interface** - Browser-based with WebGL viewer
+3. **API Server** - Backend only (for developers)
+
+### Manual Installation (Advanced)
+
+If you prefer manual setup or want to customize installation:
+
+1. **Clone repository** and navigate to project directory:
+```bash
 cd AI3DModelGenerator
 ```
 
-2. Create a virtual environment (recommended):
+2. **Create a virtual environment** (recommended):
 ```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
@@ -40,6 +71,18 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 3. Install dependencies:
 ```bash
 pip install -r requirements.txt
+```
+
+The one-click scripts handle this automatically!
+
+4. Configure environment variables:
+
+**For One-Click Users:**
+The `.env` file is created automatically on first run. Edit it to add your API keys (optional).
+
+**For Manual Installation:**
+```bash
+cp .env.example .env
 ```
 
 4. Configure environment variables:
@@ -65,19 +108,27 @@ DEVICE=auto
 API_HOST=0.0.0.0
 API_PORT=5000
 
-# LLM Configuration (Local LLM is prioritized by default)
+# Local LLM Configuration
 DEFAULT_LLM=auto  # auto, local, openai, anthropic, openrouter
 LOCAL_LLM_ENABLED=True
 LOCAL_LLM_PATH=./models/llm
 LOCAL_LLM_TYPE=transformers  # Options: transformers, glm4
 # For GLM 4.7: LOCAL_LLM_PATH=THUDM/glm-4-9b-chat
 
+# Networked LLM Configuration (e.g., LM Studio, oobabooga)
+NETWORKED_LLM_URL=
+NETWORKED_LLM_API_KEY=
+
+# Model Auto-Download Configuration
+AUTO_DOWNLOAD_MODELS=false  # Automatically download models on startup
+AUTO_DOWNLOAD_3D_MODELS=true  # Download Shap-E, TripoSR
+AUTO_DOWNLOAD_LLM_MODELS=false  # Download LLM models
+
 # 3D Generation
 DEFAULT_INFERENCE_STEPS=50
 DEFAULT_GUIDANCE_SCALE=7.5
 DEFAULT_FRAME_SIZE=256
 MESH_RESOLUTION=256
-```
 
 **Default LLM Priority:**
 1. Local LLM (if enabled and available) - Priority 1
@@ -283,6 +334,86 @@ curl -X POST http://localhost:5000/api/models/auto-download
 
 # Check disk space
 curl http://localhost:5000/api/models/disk-space
+```
+
+## One-Click Run Scripts
+
+The project includes one-click run scripts for easy setup and launch:
+
+### Windows: `run.bat`
+
+Double-click `run.bat` to:
+- ✅ Create/activate Python virtual environment
+- ✅ Install all dependencies via pip
+- ✅ Create `.env` configuration file from template
+- ✅ Interactive mode selection (GUI/Web/API)
+- ✅ Color-coded progress with step numbers
+- ✅ Auto-detect and use best available Python
+
+### Linux/Mac: `run.sh`
+
+```bash
+chmod +x run.sh
+./run.sh
+```
+
+This will:
+- ✅ Create/activate Python virtual environment
+- ✅ Install all dependencies via pip
+- ✅ Create `.env` configuration file from template
+- ✅ Interactive mode selection (GUI/Web/API)
+- ✅ Auto-detect python3 vs python
+- ✅ Open browser automatically for web mode
+
+### Script Features
+
+**Setup Process:**
+- Creates virtual environment if not exists
+- Upgrades pip to latest version
+- Installs all requirements from requirements.txt
+- Creates .env from .env.example if missing
+- Creates required directories (output/, models/, logs/, etc.)
+
+**Mode Selection:**
+- Desktop GUI: Starts PyQt6 application (default)
+- Web Interface: Opens browser at http://localhost:5000/
+- API Server: Starts Flask API only (for developers)
+- Auto-prompt: Interactive mode selection
+
+**Platform Detection:**
+- Windows: Uses `venv\Scripts\activate.bat`
+- Linux/Mac: Uses `source venv/bin/activate`
+- Auto-detects python3 or python
+- Tries to open browser automatically for web mode
+
+**No more manual setup!** Just run the script and you're ready.
+
+### Command-Line Options
+
+The scripts also support command-line arguments:
+
+**Windows:**
+```batch
+run.bat --gui    # Force GUI mode
+run.bat --web    # Force web mode
+run.bat --api    # Force API mode
+```
+
+**Linux/Mac:**
+```bash
+./run.sh --gui    # Force GUI mode
+./run.sh --web    # Force web mode
+./run.sh --api    # Force API mode
+```
+
+### Manual Installation (Advanced)
+
+For users who prefer manual control over installation process:
+
+1. Clone repository and navigate to project directory:
+
+```bash
+cd AI3DModelGenerator
 ```
 
 ## Examples
