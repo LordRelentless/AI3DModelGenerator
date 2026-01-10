@@ -208,10 +208,12 @@
                 <div class="input-group">
                     <label>LLM Provider</label>
                     <select id="llm-provider">
+                        <option value="auto" selected>Auto (Local First, then Fallback)</option>
                         <option value="none">None</option>
                         <option value="openai">OpenAI</option>
                         <option value="anthropic">Anthropic</option>
-                        <option value="local">Local</option>
+                        <option value="openrouter">OpenRouter (100+ Models)</option>
+                        <option value="local">Local Only</option>
                     </select>
                 </div>
                 

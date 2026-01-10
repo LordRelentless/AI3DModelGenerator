@@ -4,10 +4,10 @@ An AI-powered 3D model generation application with LLM integration, slicer previ
 
 ## Features
 
-- **AI/LLM Input as Primary Interface**: Use natural language to describe 3D models with optional LLM enhancement
+- **AI/LLM Input as Primary Interface**: Use natural language to describe 3D models with automatic LLM enhancement
 - **Text-to-3D Generation**: Generate 3D models from text descriptions using Shap-E and Stable Diffusion models
 - **Image Recognition**: Convert 2D images to 3D models using TripoSR
-- **Multiple LLM Providers**: Support for OpenAI, Anthropic, and local LLM models
+- **Local-First LLM**: Prioritizes local LLM (GLM 4.7, others) with fallback to cloud providers (OpenAI, Anthropic, OpenRouter)
 - **GPU Agnostic**: Works with NVIDIA CUDA, AMD ROCm, Apple Silicon (MPS), and CPU
 - **Slicer Preview**: Built-in 3D slicer for print preparation with G-code export
 - **Multiple Interfaces**: 
@@ -50,12 +50,13 @@ cp .env.example .env
 
 ## Configuration
 
-Edit the `.env` file to configure the application:
+Edit `.env` file to configure application:
 
 ```env
-# API Keys
+# API Keys (optional - only needed if local LLM is unavailable)
 OPENAI_API_KEY=your_openai_api_key_here
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
+OPENROUTER_API_KEY=your_openrouter_api_key_here
 
 # Device (auto, cuda, mps, cpu)
 DEVICE=auto
@@ -64,10 +65,12 @@ DEVICE=auto
 API_HOST=0.0.0.0
 API_PORT=5000
 
-# LLM Configuration
-DEFAULT_LLM=openai
-LOCAL_LLM_ENABLED=False
+# LLM Configuration (Local LLM is prioritized by default)
+DEFAULT_LLM=auto  # auto, local, openai, anthropic, openrouter
+LOCAL_LLM_ENABLED=True
 LOCAL_LLM_PATH=./models/llm
+LOCAL_LLM_TYPE=transformers  # Options: transformers, glm4
+# For GLM 4.7: LOCAL_LLM_PATH=THUDM/glm-4-9b-chat
 
 # 3D Generation
 DEFAULT_INFERENCE_STEPS=50
@@ -75,6 +78,14 @@ DEFAULT_GUIDANCE_SCALE=7.5
 DEFAULT_FRAME_SIZE=256
 MESH_RESOLUTION=256
 ```
+
+**Default LLM Priority:**
+1. Local LLM (if enabled and available) - Priority 1
+2. Anthropic (if API key available) - Priority 90
+3. OpenRouter (if API key available) - Priority 80
+4. OpenAI (if API key available) - Priority 100
+
+**Important:** The application automatically uses local LLM first. Remote/cloud providers are only used as fallback if local LLM is not available or if specifically selected.
 
 ## Usage
 
@@ -165,20 +176,42 @@ All CUDA-specific operations have been replaced with PyTorch's device-agnostic o
 
 ## LLM Providers
 
-### OpenAI (GPT-4/GPT-3.5)
+### Default Behavior: Local-First
+The application automatically prioritizes local LLMs for privacy and reduced latency. Remote/cloud providers are only used as fallback if local LLM is unavailable.
+
+### Local LLM (Default - Highest Priority)
+- **No API required** - Runs entirely on your machine
+- **Privacy** - All processing stays local
+- **Supported Models**:
+  - GLM 4.7 (THUDM/glm-4-9b-chat) - Excellent for Chinese/English
+  - Llama 2/3
+  - Mistral
+  - Any Hugging Face transformers model
+- **Configuration**: Set `LOCAL_LLM_ENABLED=True` and provide `LOCAL_LLM_PATH`
+- **Model Types**:
+  - `transformers` (default): Standard Hugging Face models
+  - `glm4`: GLM 4.7 specific optimizations
+
+### OpenRouter (Fallback Priority 1)
+- Requires API key in `.env`
+- Access to 100+ models through single API
+- Supports Anthropic, OpenAI, Google, Meta, etc.
+- Cost-effective compared to direct provider APIs
+- Models: `anthropic/claude-3-opus`, `openai/gpt-4`, `google/gemini-pro`, etc.
+
+### Anthropic (Fallback Priority 2)
+- Requires API key in `.env`
+- Alternative to OpenAI
+- Strong prompt engineering capabilities
+- Models: Claude 3 Opus, Sonnet, Haiku
+
+### OpenAI (Fallback Priority 3)
 - Requires API key in `.env`
 - Best for prompt enhancement
 - High-quality 3D model descriptions
+- Models: GPT-4, GPT-3.5 Turbo
 
-### Anthropic (Claude)
-- Requires API key in `.env`
-- Alternative to OpenAI
-- Strong prompt engineering
-
-### Local LLM
-- No API required
-- Requires local model installation
-- Supports various open-source models (Llama, Mistral, etc.)
+**Note:** API keys for remote providers are optional. The application works fine with local LLM only, which is the recommended default configuration.
 
 ## Examples
 

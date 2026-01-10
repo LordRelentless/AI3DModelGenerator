@@ -61,7 +61,7 @@ class OpenAIProvider(BaseLLMProvider):
         
         response = await self.generate_text(
             prompt=f"{system_prompt}\n\n{user_prompt}",
-            model="gpt-4",
+            model="anthropic/claude-3-opus",
             temperature=0.7
         )
         
@@ -140,22 +140,38 @@ class AnthropicProvider(BaseLLMProvider):
             }
 
 class LocalLLMProvider(BaseLLMProvider):
-    def __init__(self, model_path: str):
+    def __init__(self, model_path: str, model_type: str = "transformers"):
         super().__init__("")
         self.model_path = model_path
+        self.model_type = model_type
         try:
             from transformers import AutoModelForCausalLM, AutoTokenizer
             import torch
             
-            print(f"Loading local LLM from {model_path}...")
-            self.tokenizer = AutoTokenizer.from_pretrained(model_path)
-            self.model = AutoModelForCausalLM.from_pretrained(
-                model_path,
-                torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-                device_map="auto" if torch.cuda.is_available() else None
-            )
+            print(f"Loading local LLM from {model_path} ({model_type})...")
+            
+            if model_type == "glm4":
+                from transformers import AutoModelForCausalLM, AutoTokenizer
+                self.tokenizer = AutoTokenizer.from_pretrained(
+                    model_path,
+                    trust_remote_code=True
+                )
+                self.model = AutoModelForCausalLM.from_pretrained(
+                    model_path,
+                    torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+                    device_map="auto" if torch.cuda.is_available() else None,
+                    trust_remote_code=True
+                )
+            else:
+                self.tokenizer = AutoTokenizer.from_pretrained(model_path)
+                self.model = AutoModelForCausalLM.from_pretrained(
+                    model_path,
+                    torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+                    device_map="auto" if torch.cuda.is_available() else None
+                )
+            
             self.available = True
-            print("Local LLM loaded successfully")
+            print(f"Local LLM loaded successfully from {model_path}")
         except Exception as e:
             print(f"Failed to load local LLM: {e}")
             self.model = None
@@ -222,17 +238,47 @@ class LocalLLMProvider(BaseLLMProvider):
 class LLMManager:
     def __init__(self):
         self.providers = {}
+        self.provider_priority = []
     
-    def add_provider(self, name: str, provider: BaseLLMProvider) -> None:
+    def add_provider(self, name: str, provider: BaseLLMProvider, priority: int = 100) -> None:
         self.providers[name] = provider
+        self.provider_priority.append((priority, name))
+        self.provider_priority.sort()
     
     def get_provider(self, name: str) -> Optional[BaseLLMProvider]:
         return self.providers.get(name)
     
+    def get_available_provider(self) -> Optional[str]:
+        for priority, name in self.provider_priority:
+            provider = self.providers.get(name)
+            if provider and provider.available:
+                print(f"Using LLM provider: {name} (priority: {priority})")
+                return name
+        print("No available LLM provider found")
+        return None
+    
     async def generate_3d_prompt(self, provider_name: str, user_input: str) -> Dict:
+        if provider_name == "auto":
+            available_provider = self.get_available_provider()
+            if not available_provider:
+                return {
+                    "prompt": user_input,
+                    "negative_prompt": "",
+                    "style": "realistic",
+                    "quality": "high",
+                    "guidance_scale": 7.5,
+                    "inference_steps": 50,
+                    "provider": "none",
+                    "message": "No LLM provider available, using basic prompt"
+                }
+            provider_name = available_provider
+        
         provider = self.get_provider(provider_name)
         if not provider:
             raise ValueError(f"Provider {provider_name} not found")
-        return await provider.generate_3d_prompt(user_input)
+        
+        result = await provider.generate_3d_prompt(user_input)
+        result["provider"] = provider_name
+        return result
 
 llm_manager = LLMManager()

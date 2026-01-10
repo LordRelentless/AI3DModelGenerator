@@ -23,11 +23,19 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Edit `.env` and add your API keys (optional):
+Edit `.env` (optional, for fallback providers):
 ```env
+# Local LLM is enabled by default - works without API keys
+LOCAL_LLM_ENABLED=True
+LOCAL_LLM_PATH=./models/llm
+
+# Optional: Add API keys for fallback if local LLM unavailable
 OPENAI_API_KEY=your_key_here
 ANTHROPIC_API_KEY=your_key_here
+OPENROUTER_API_KEY=your_key_here
 ```
+
+**Note:** The application works great with just local LLM! API keys are only needed as fallback options.
 
 ## Running the Application
 
@@ -74,10 +82,21 @@ Access at: `http://localhost:5000/`
 ### Using LLM Enhancement
 
 1. Enter a basic description: "A spaceship"
-2. Select an LLM provider (e.g., "openai")
+2. Select an LLM provider:
+   - "auto" (recommended): Automatically uses local LLM first, then falls back to remote providers
+   - "local": Use local LLM only
+   - "openai": Use OpenAI GPT-4
+   - "anthropic": Use Anthropic Claude
+   - "openrouter": Use OpenRouter (access to 100+ models)
 3. Click "Enhance with LLM"
 4. The prompt will be expanded with more details
 5. Click "Generate 3D Model" with the enhanced prompt
+
+**Note:** With "auto" selected (default), the app automatically:
+1. Tries local LLM first (no API needed)
+2. Falls back to Anthropic if available
+3. Falls back to OpenRouter if available
+4. Falls back to OpenAI if available
 
 ### Slicing a Model for 3D Printing
 
@@ -158,9 +177,12 @@ AI3DModelGenerator/
 - Mention lighting conditions for textures
 
 ### LLM Enhancement
-- Use simple descriptions and let LLM expand them
+- Use "auto" mode for best results (local first, then fallback)
+- Simple prompts work well with LLM enhancement
+- Local LLM provides privacy and faster responses
 - Different providers may give different results
-- Can combine: start simple, enhance, then edit manually
+- GLM 4.7 excels at Chinese/English mixed prompts
+- OpenRouter gives access to many models through one API
 
 ### Slicing
 - Lower layer height = better quality, longer print time

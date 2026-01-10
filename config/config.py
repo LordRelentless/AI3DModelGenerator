@@ -9,7 +9,8 @@ class Config:
     
     API_KEYS = {
         'openai': os.getenv('OPENAI_API_KEY', ''),
-        'anthropic': os.getenv('ANTHROPIC_API_KEY', '')
+        'anthropic': os.getenv('ANTHROPIC_API_KEY', ''),
+        'openrouter': os.getenv('OPENROUTER_API_KEY', '')
     }
     
     DEVICE = os.getenv('DEVICE', 'auto')
@@ -18,9 +19,10 @@ class Config:
     API_PORT = int(os.getenv('API_PORT', 5000))
     DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
     
-    DEFAULT_LLM = os.getenv('DEFAULT_LLM', 'openai')
-    LOCAL_LLM_ENABLED = os.getenv('LOCAL_LLM_ENABLED', 'False').lower() == 'true'
+    DEFAULT_LLM = os.getenv('DEFAULT_LLM', 'auto')
+    LOCAL_LLM_ENABLED = os.getenv('LOCAL_LLM_ENABLED', 'True').lower() == 'true'
     LOCAL_LLM_PATH = os.getenv('LOCAL_LLM_PATH', './models/llm')
+    LOCAL_LLM_TYPE = os.getenv('LOCAL_LLM_TYPE', 'transformers')
     
     SHAP_E_MODEL = os.getenv('SHAP_E_MODEL', 'openai/shap-e')
     TRIPOSR_MODEL = os.getenv('TRIPOSR_MODEL', 'stabilityai/triposr')

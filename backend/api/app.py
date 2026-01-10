@@ -7,7 +7,7 @@ import uuid
 
 from config.config import Config
 from backend.core.device_manager import get_device, get_device_info
-from backend.core.llm_manager import LLMManager, OpenAIProvider, AnthropicProvider, LocalLLMProvider
+from backend.core.llm_manager import LLMManager, OpenAIProvider, AnthropicProvider, LocalLLMProvider, OpenRouterProvider
 from backend.models.generator import create_generator
 from backend.utils.slicer import Slicer, SlicerConfig
 
@@ -19,14 +19,21 @@ generators = {}
 slicers = {}
 
 def init_llm_providers():
+    if Config.LOCAL_LLM_ENABLED:
+        llm_manager.add_provider('local', LocalLLMProvider(Config.LOCAL_LLM_PATH, Config.LOCAL_LLM_TYPE), priority=1)
+        print("Local LLM provider added (highest priority)")
+    
     if Config.API_KEYS['openai']:
-        llm_manager.add_provider('openai', OpenAIProvider(Config.API_KEYS['openai']))
+        llm_manager.add_provider('openai', OpenAIProvider(Config.API_KEYS['openai']), priority=100)
+        print("OpenAI provider added")
     
     if Config.API_KEYS['anthropic']:
-        llm_manager.add_provider('anthropic', AnthropicProvider(Config.API_KEYS['anthropic']))
+        llm_manager.add_provider('anthropic', AnthropicProvider(Config.API_KEYS['anthropic']), priority=90)
+        print("Anthropic provider added")
     
-    if Config.LOCAL_LLM_ENABLED:
-        llm_manager.add_provider('local', LocalLLMProvider(Config.LOCAL_LLM_PATH))
+    if Config.API_KEYS['openrouter']:
+        llm_manager.add_provider('openrouter', OpenRouterProvider(Config.API_KEYS['openrouter']), priority=80)
+        print("OpenRouter provider added")
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
@@ -43,9 +50,25 @@ def device_info():
 def list_llm_providers():
     providers = list(llm_manager.providers.keys())
     available = {k: v.available for k, v in llm_manager.providers.items()}
+    
+    provider_details = []
+    for priority, name in llm_manager.provider_priority:
+        provider = llm_manager.providers.get(name)
+        if provider:
+            provider_details.append({
+                'name': name,
+                'available': provider.available,
+                'priority': priority
+            })
+    
+    available_provider = llm_manager.get_available_provider()
+    
     return jsonify({
         'providers': providers,
-        'available': available
+        'available': available,
+        'details': provider_details,
+        'auto_selected': available_provider,
+        'default': Config.DEFAULT_LLM
     })
 
 @app.route('/api/llm/generate-prompt', methods=['POST'])

@@ -138,7 +138,7 @@ class TextTo3DTab(QWidget):
         self.prompt_input.setMaximumHeight(100)
         
         self.llm_combo = QComboBox()
-        self.llm_combo.addItems(['none', 'openai', 'anthropic', 'local'])
+        self.llm_combo.addItems(['auto', 'none', 'openai', 'anthropic', 'openrouter', 'local'])
         
         enhance_btn = QPushButton("Enhance with LLM")
         enhance_btn.clicked.connect(self.enhance_prompt)
