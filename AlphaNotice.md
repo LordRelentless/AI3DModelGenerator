@@ -1,0 +1,1 @@
+I'm building this for my personal use, but making it open to the public via Github. I cannot guarantee it will work for you, I'm testing on my own hardware and software. Feel free to fork and rebuild for your use. I can't guarantee I can offer assistance or handle any problems that may arise. 
