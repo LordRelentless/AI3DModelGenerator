@@ -88,12 +88,21 @@ async def generate_3d_prompt():
     data = request.json
     user_input = data.get('input', '')
     provider = data.get('provider', Config.DEFAULT_LLM)
-    
+    networked_url = data.get('networked_url', '')
+
     if not user_input:
         return jsonify({'error': 'Input is required'}), 400
-    
+
     try:
-        result = await llm_manager.generate_3d_prompt(provider, user_input)
+        # If using networked provider and URL provided, create a temporary provider
+        if provider == 'networked' and networked_url:
+            from backend.core.llm_manager import NetworkedLLMProvider
+            temp_provider = NetworkedLLMProvider(networked_url)
+            result = await temp_provider.generate_3d_prompt(user_input)
+            result['provider'] = 'networked'
+        else:
+            result = await llm_manager.generate_3d_prompt(provider, user_input)
+
         return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)}), 500

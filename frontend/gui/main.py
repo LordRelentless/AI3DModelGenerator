@@ -9,12 +9,104 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QTextEdit, QLabel, QComboBox, QSpinBox, QDoubleSpinBox,
     QTabWidget, QProgressBar, QFileDialog, QMessageBox, QGroupBox,
-    QFormLayout, QScrollArea
+    QFormLayout, QScrollArea, QMenuBar, QMenu, QDialog, QLineEdit,
+    QCheckBox, QGroupBox, QHBoxLayout, QVBoxLayout, QDialogButtonBox
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QPixmap
 
 from config.config import Config
+
+class PreferencesDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Preferences")
+        self.setModal(True)
+        self.resize(500, 400)
+
+        layout = QVBoxLayout()
+
+        # API Keys section
+        api_group = QGroupBox("API Keys")
+        api_layout = QFormLayout()
+
+        self.openai_key = QLineEdit(Config.API_KEYS.get('openai', ''))
+        self.openai_key.setEchoMode(QLineEdit.EchoMode.Password)
+        api_layout.addRow("OpenAI API Key:", self.openai_key)
+
+        self.anthropic_key = QLineEdit(Config.API_KEYS.get('anthropic', ''))
+        self.anthropic_key.setEchoMode(QLineEdit.EchoMode.Password)
+        api_layout.addRow("Anthropic API Key:", self.anthropic_key)
+
+        self.openrouter_key = QLineEdit(Config.API_KEYS.get('openrouter', ''))
+        self.openrouter_key.setEchoMode(QLineEdit.EchoMode.Password)
+        api_layout.addRow("OpenRouter API Key:", self.openrouter_key)
+
+        api_group.setLayout(api_layout)
+        layout.addWidget(api_group)
+
+        # Local LLM section
+        local_group = QGroupBox("Local LLM Settings")
+        local_layout = QFormLayout()
+
+        self.llm_enabled = QCheckBox("Enable Local LLM")
+        self.llm_enabled.setChecked(Config.LOCAL_LLM_ENABLED)
+        local_layout.addRow(self.llm_enabled)
+
+        self.llm_path = QLineEdit(Config.LOCAL_LLM_PATH)
+        local_layout.addRow("Local LLM Path:", self.llm_path)
+
+        self.llm_type = QComboBox()
+        self.llm_type.addItems(['transformers', 'glm4'])
+        self.llm_type.setCurrentText(Config.LOCAL_LLM_TYPE)
+        local_layout.addRow("LLM Type:", self.llm_type)
+
+        self.networked_url = QLineEdit(Config.NETWORKED_LLM_URL or '')
+        local_layout.addRow("Networked LLM URL:", self.networked_url)
+
+        self.networked_api_key = QLineEdit(Config.NETWORKED_LLM_API_KEY or '')
+        self.networked_api_key.setEchoMode(QLineEdit.EchoMode.Password)
+        local_layout.addRow("Networked API Key:", self.networked_api_key)
+
+        local_group.setLayout(local_layout)
+        layout.addWidget(local_group)
+
+        # Export section
+        export_group = QGroupBox("Export Settings")
+        export_layout = QFormLayout()
+
+        self.output_dir = QLineEdit(str(Config.OUTPUT_DIR))
+        export_layout.addRow("Output Directory:", self.output_dir)
+
+        self.models_dir = QLineEdit(str(Config.MODELS_DIR))
+        export_layout.addRow("Models Directory:", self.models_dir)
+
+        export_group.setLayout(export_layout)
+        layout.addWidget(export_group)
+
+        # Buttons
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+        self.setLayout(layout)
+
+    def get_settings(self):
+        return {
+            'openai_key': self.openai_key.text(),
+            'anthropic_key': self.anthropic_key.text(),
+            'openrouter_key': self.openrouter_key.text(),
+            'llm_enabled': self.llm_enabled.isChecked(),
+            'llm_path': self.llm_path.text(),
+            'llm_type': self.llm_type.currentText(),
+            'networked_url': self.networked_url.text(),
+            'networked_api_key': self.networked_api_key.text(),
+            'output_dir': self.output_dir.text(),
+            'models_dir': self.models_dir.text()
+        }
 
 class APIClient:
     def __init__(self, base_url: str = f"http://{Config.API_HOST}:{Config.API_PORT}"):
@@ -138,7 +230,12 @@ class TextTo3DTab(QWidget):
         self.prompt_input.setMaximumHeight(100)
         
         self.llm_combo = QComboBox()
-        self.llm_combo.addItems(['auto', 'none', 'openai', 'anthropic', 'openrouter', 'local'])
+        self.llm_combo.addItems(['auto', 'none', 'openai', 'anthropic', 'openrouter', 'local', 'networked'])
+        self.llm_combo.currentTextChanged.connect(self.on_llm_provider_changed)
+
+        self.networked_url_input = QLineEdit()
+        self.networked_url_input.setPlaceholderText("http://localhost:5000 or http://192.168.1.100:5000")
+        self.networked_url_input.hide()  # Hidden by default
         
         enhance_btn = QPushButton("Enhance with LLM")
         enhance_btn.clicked.connect(self.enhance_prompt)
@@ -147,6 +244,8 @@ class TextTo3DTab(QWidget):
         input_layout.addWidget(self.prompt_input)
         input_layout.addWidget(QLabel("LLM Provider:"))
         input_layout.addWidget(self.llm_combo)
+        input_layout.addWidget(QLabel("Networked LLM URL:"))
+        input_layout.addWidget(self.networked_url_input)
         input_layout.addWidget(enhance_btn)
         input_group.setLayout(input_layout)
         
@@ -200,25 +299,42 @@ class TextTo3DTab(QWidget):
         
         self.setLayout(layout)
     
+    def on_llm_provider_changed(self, provider):
+        """Show/hide networked URL input based on provider selection"""
+        if provider == 'networked':
+            self.networked_url_input.show()
+        else:
+            self.networked_url_input.hide()
+
     def enhance_prompt(self):
         provider = self.llm_combo.currentText()
         if provider == 'none':
             return
-        
+
         prompt = self.prompt_input.toPlainText()
         if not prompt:
             QMessageBox.warning(self, "Warning", "Please enter a prompt first")
             return
-        
-        result = self.client.post('/api/llm/generate-prompt', {
+
+        # Add networked URL if using networked provider
+        data = {
             'input': prompt,
             'provider': provider
-        })
-        
+        }
+
+        if provider == 'networked':
+            url = self.networked_url_input.text().strip()
+            if not url:
+                QMessageBox.warning(self, "Warning", "Please enter a networked LLM URL")
+                return
+            data['networked_url'] = url
+
+        result = self.client.post('/api/llm/generate-prompt', data)
+
         if 'error' in result:
             QMessageBox.critical(self, "Error", result['error'])
             return
-        
+
         enhanced = result.get('prompt', prompt)
         self.prompt_input.setText(enhanced)
     
@@ -509,7 +625,10 @@ class MainWindow(QMainWindow):
     def init_ui(self):
         self.setWindowTitle("AI 3D Model Generator")
         self.setGeometry(100, 100, Config.WINDOW_WIDTH, Config.WINDOW_HEIGHT)
-        
+
+        # Create menu bar
+        self.create_menu_bar()
+
         central_widget = QWidget()
         main_layout = QVBoxLayout()
         
@@ -536,7 +655,204 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
         
         self.check_device_info()
-    
+
+    def create_menu_bar(self):
+        menubar = self.menuBar()
+
+        # File menu
+        file_menu = menubar.addMenu('File')
+
+        open_action = file_menu.addAction('Open Model')
+        open_action.triggered.connect(self.open_model)
+
+        save_action = file_menu.addAction('Save Model')
+        save_action.triggered.connect(self.save_model)
+
+        file_menu.addSeparator()
+
+        exit_action = file_menu.addAction('Exit')
+        exit_action.triggered.connect(self.close)
+
+        # Edit menu
+        edit_menu = menubar.addMenu('Edit')
+
+        preferences_action = edit_menu.addAction('Preferences')
+        preferences_action.triggered.connect(self.show_preferences)
+
+        # Export menu
+        export_menu = menubar.addMenu('Export')
+
+        export_obj_action = export_menu.addAction('Export as OBJ')
+        export_obj_action.triggered.connect(lambda: self.export_model('obj'))
+
+        export_stl_action = export_menu.addAction('Export as STL')
+        export_stl_action.triggered.connect(lambda: self.export_model('stl'))
+
+        export_ply_action = export_menu.addAction('Export as PLY')
+        export_ply_action.triggered.connect(lambda: self.export_model('ply'))
+
+        export_glb_action = export_menu.addAction('Export as GLB')
+        export_glb_action.triggered.connect(lambda: self.export_model('glb'))
+
+    def open_model(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Open 3D Model", "", "3D Models (*.ply *.obj *.stl);;All Files (*)"
+        )
+        if file_path:
+            # Load the model into the current tab
+            current_tab = self.tab_widget.currentWidget()
+            if hasattr(current_tab, 'load_model'):
+                current_tab.load_model(file_path)
+
+    def save_model(self):
+        if hasattr(self.text_to_3d_tab, 'current_mesh_path') and self.text_to_3d_tab.current_mesh_path:
+            file_path, _ = QFileDialog.getSaveFileName(
+                self, "Save 3D Model", "", "PLY Files (*.ply);;All Files (*)"
+            )
+            if file_path:
+                import shutil
+                shutil.copy2(self.text_to_3d_tab.current_mesh_path, file_path)
+                QMessageBox.information(self, "Success", "Model saved successfully!")
+
+    def export_model(self, format_type):
+        if not hasattr(self.text_to_3d_tab, 'current_mesh_path') or not self.text_to_3d_tab.current_mesh_path:
+            QMessageBox.warning(self, "Warning", "No model to export. Generate a model first.")
+            return
+
+        format_ext = {
+            'obj': '.obj',
+            'stl': '.stl',
+            'ply': '.ply',
+            'glb': '.glb'
+        }
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, f"Export as {format_type.upper()}", "",
+            f"{format_type.upper()} Files (*{format_ext[format_type]});;All Files (*)"
+        )
+
+        if file_path:
+            try:
+                # Convert and export the mesh
+                self.convert_and_export_mesh(self.text_to_3d_tab.current_mesh_path, file_path, format_type)
+                QMessageBox.information(self, "Success", f"Model exported as {format_type.upper()} successfully!")
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to export model: {str(e)}")
+
+    def convert_and_export_mesh(self, input_path, output_path, format_type):
+        """Convert mesh to different formats"""
+        try:
+            import trimesh
+
+            # Load the mesh
+            mesh = trimesh.load(input_path)
+
+            # Ensure it's a Trimesh object
+            if isinstance(mesh, trimesh.Scene):
+                mesh = trimesh.util.concatenate(
+                    tuple(trimesh.Trimesh(vertices=g.vertices, faces=g.faces)
+                          for g in mesh.geometry.values())
+                )
+
+            # Export in requested format
+            if format_type.lower() == 'obj':
+                mesh.export(output_path, file_type='obj')
+            elif format_type.lower() == 'stl':
+                mesh.export(output_path, file_type='stl')
+            elif format_type.lower() == 'ply':
+                mesh.export(output_path, file_type='ply')
+            elif format_type.lower() == 'glb':
+                mesh.export(output_path, file_type='glb')
+            else:
+                raise ValueError(f"Unsupported format: {format_type}")
+
+        except ImportError:
+            raise Exception("trimesh library required for mesh conversion")
+        except Exception as e:
+            raise Exception(f"Mesh conversion failed: {str(e)}")
+
+    def show_preferences(self):
+        dialog = PreferencesDialog(self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            settings = dialog.get_settings()
+            self.apply_preferences(settings)
+
+    def apply_preferences(self, settings):
+        """Apply the preferences from the dialog"""
+        # Update config values
+        Config.API_KEYS['openai'] = settings['openai_key']
+        Config.API_KEYS['anthropic'] = settings['anthropic_key']
+        Config.API_KEYS['openrouter'] = settings['openrouter_key']
+
+        Config.LOCAL_LLM_ENABLED = settings['llm_enabled']
+        Config.LOCAL_LLM_PATH = settings['llm_path']
+        Config.LOCAL_LLM_TYPE = settings['llm_type']
+        Config.NETWORKED_LLM_URL = settings['networked_url']
+        Config.NETWORKED_LLM_API_KEY = settings['networked_api_key']
+
+        Config.OUTPUT_DIR = Path(settings['output_dir'])
+        Config.MODELS_DIR = Path(settings['models_dir'])
+
+        # Save to .env file (you might want to implement this)
+        self.save_config_to_env(settings)
+
+        QMessageBox.information(self, "Success", "Preferences saved! Restart the application for some changes to take effect.")
+
+    def save_config_to_env(self, settings):
+        """Save settings to .env file"""
+        try:
+            env_content = f"""OPENAI_API_KEY={settings['openai_key']}
+ANTHROPIC_API_KEY={settings['anthropic_key']}
+OPENROUTER_API_KEY={settings['openrouter_key']}
+
+# Model Configuration
+SHAP_E_MODEL=openai/shap-e
+TRIPOSR_MODEL=stabilityai/triposr
+DEVICE=auto
+
+# Server Configuration
+API_HOST=0.0.0.0
+API_PORT=5000
+DEBUG=False
+
+# LLM Configuration
+DEFAULT_LLM=auto
+LOCAL_LLM_ENABLED={'True' if settings['llm_enabled'] else 'False'}
+LOCAL_LLM_PATH={settings['llm_path']}
+LOCAL_LLM_TYPE={settings['llm_type']}
+NETWORKED_LLM_URL={settings['networked_url']}
+NETWORKED_LLM_API_KEY={settings['networked_api_key']}
+
+# 3D Generation Configuration
+DEFAULT_INFERENCE_STEPS=50
+DEFAULT_GUIDANCE_SCALE=7.5
+DEFAULT_FRAME_SIZE=256
+MESH_RESOLUTION=256
+
+# Output Configuration
+OUTPUT_DIR={settings['output_dir']}
+MODELS_DIR={settings['models_dir']}
+LOGS_DIR=./logs
+
+# GUI Configuration
+WINDOW_WIDTH=1400
+WINDOW_HEIGHT=900
+
+# Web Server Configuration
+WEB_PORT=8000
+
+# Model Auto-Download Configuration
+AUTO_DOWNLOAD_MODELS=false
+AUTO_DOWNLOAD_3D_MODELS=true
+AUTO_DOWNLOAD_LLM_MODELS=false
+"""
+
+            with open('.env', 'w') as f:
+                f.write(env_content)
+
+        except Exception as e:
+            print(f"Error saving .env file: {e}")
+
     def check_device_info(self):
         result = self.client.get('/api/device/info')
         if 'error' not in result:
