@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 
 import sys
-import argparse
+import os
 from pathlib import Path
+import argparse
+
+# Add project root to sys.path to ensure absolute imports work
+PROJECT_ROOT = Path(__file__).parent.absolute()
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from config.config import Config
 from backend.api.app import run_server
