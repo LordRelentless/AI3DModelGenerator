@@ -168,7 +168,8 @@ Environment variables (`.env` file):
 - `OPENAI_API_KEY`: OpenAI API key
 - `ANTHROPIC_API_KEY`: Anthropic API key
 - `DEVICE`: auto, cuda, mps, or cpu
-- `API_HOST`: Server host (default: 0.0.0.0)
+- `API_HOST`: Client connection address (default: 127.0.0.1)
+- `SERVER_HOST`: Server bind address (default: 0.0.0.0)
 - `API_PORT`: Server port (default: 5000)
 - `DEFAULT_LLM`: Default LLM provider
 - `LOCAL_LLM_ENABLED`: Enable local LLM support
