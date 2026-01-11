@@ -313,6 +313,72 @@ class NetworkedLLMProvider(BaseLLMProvider):
                 "inference_steps": 50
             }
 
+class OpenRouterProvider(BaseLLMProvider):
+    def __init__(self, api_key: str):
+        super().__init__(api_key)
+        try:
+            import openai
+            self.client = openai.AsyncOpenAI(
+                base_url="https://openrouter.ai/api/v1",
+                api_key=api_key
+            )
+            self.available = True
+        except ImportError:
+            self.client = None
+            self.available = False
+    
+    async def generate_text(self, prompt: str, model: str = "anthropic/claude-3-opus", **kwargs) -> str:
+        if not self.available:
+            raise RuntimeError("OpenRouter library not installed")
+        
+        response = await self.client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            **kwargs
+        )
+        return response.choices[0].message.content
+    
+    async def generate_3d_prompt(self, user_input: str) -> Dict:
+        system_prompt = """You are a 3D model generation assistant. 
+        Analyze the user's input and create a detailed prompt for 3D model generation.
+        
+        Return your response as JSON with these fields:
+        - "prompt": The main text-to-3D prompt
+        - "negative_prompt": Things to avoid in the 3D model
+        - "style": The artistic style (realistic, stylized, cartoon, etc.)
+        - "quality": Quality settings (high, medium, low)
+        - "guidance_scale": Recommended guidance scale (1-20)
+        - "inference_steps": Recommended number of inference steps (10-100)"""
+        
+        user_prompt = f"""Convert this user request into a 3D model generation prompt:
+        
+        User input: {user_input}
+        
+        Consider:
+        - What object should be created?
+        - What are the key visual details?
+        - What materials should be used?
+        - What size and proportions?
+        - Any specific poses or orientations?"""
+        
+        response = await self.generate_text(
+            prompt=f"{system_prompt}\n\n{user_prompt}",
+            model="anthropic/claude-3-opus",
+            temperature=0.7
+        )
+        
+        try:
+            return json.loads(response)
+        except json.JSONDecodeError:
+            return {
+                "prompt": user_input,
+                "negative_prompt": "",
+                "style": "realistic",
+                "quality": "high",
+                "guidance_scale": 7.5,
+                "inference_steps": 50
+            }
+
 class LLMManager:
     def __init__(self):
         self.providers = {}
