@@ -14,8 +14,9 @@ class Config:
     }
     
     DEVICE = os.getenv('DEVICE', 'auto')
-    
-    API_HOST = os.getenv('API_HOST', '0.0.0.0')
+
+    SERVER_HOST = os.getenv('SERVER_HOST', '0.0.0.0')  # Server bind address (0.0.0.0 for all interfaces)
+    API_HOST = os.getenv('API_HOST', '127.0.0.1')     # Client connection address (127.0.0.1 for local)
     API_PORT = int(os.getenv('API_PORT', 5000))
     DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
     

@@ -32,6 +32,8 @@ def main():
     print("=" * 60)
     print(f"Mode: {args.mode}")
     print(f"Device: Config.DEVICE = 'auto'")
+    print(f"Server bind: {Config.SERVER_HOST}:{Config.API_PORT}")
+    print(f"Client connects to: {Config.API_HOST}:{Config.API_PORT}")
     print(f"Output directory: {Config.OUTPUT_DIR}")
     print(f"Models directory: {Config.MODELS_DIR}")
     print("=" * 60)

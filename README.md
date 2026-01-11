@@ -105,7 +105,8 @@ OPENROUTER_API_KEY=your_openrouter_api_key_here
 DEVICE=auto
 
 # API Server
-API_HOST=0.0.0.0
+SERVER_HOST=0.0.0.0  # Server bind address (0.0.0.0 listens on all interfaces)
+API_HOST=127.0.0.1   # Client connection address (127.0.0.1 for local, server IP for remote)
 API_PORT=5000
 
 # Local LLM Configuration

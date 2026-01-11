@@ -540,9 +540,9 @@ def index():
 
 def run_server():
     init_llm_providers()
-    print(f"Starting server on {Config.API_HOST}:{Config.API_PORT}")
+    print(f"Starting server on {Config.SERVER_HOST}:{Config.API_PORT} (client connects to {Config.API_HOST}:{Config.API_PORT})")
     app.run(
-        host=Config.API_HOST,
+        host=Config.SERVER_HOST,
         port=Config.API_PORT,
         debug=Config.DEBUG,
         threaded=True
